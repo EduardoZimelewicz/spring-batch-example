@@ -2,6 +2,7 @@ plugins {
 	id 'org.springframework.boot' version '2.4.10'
 	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 	id 'java'
+	id 'jacoco'
 }
 
 group = 'com.github.eduardozimelewicz'
@@ -19,9 +20,27 @@ dependencies {
 	runtimeOnly 'org.hsqldb:hsqldb'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.batch:spring-batch-test'
-	testCompile("org.assertj:assertj-core:3.11.1")
+	testImplementation 'junit:junit:4.13'
+	testImplementation 'org.assertj:assertj-core:3.11.1'
 }
 
 test {
 	useJUnitPlatform()
+	finalizedBy jacocoTestReport
+}
+
+jacoco {
+	toolVersion = "0.8.7"
+}
+
+jacocoTestReport {
+	dependsOn test
+
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+			        "com/github/**/*Application.class"
+			])
+		}))
+	}
 }
