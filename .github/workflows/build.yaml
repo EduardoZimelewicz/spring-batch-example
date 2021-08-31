@@ -23,5 +23,10 @@ jobs:
           arguments: build
       - uses: actions/upload-artifact@v2
         with:
-          name: my-artifact
+          name: reports
           path: build/reports/
+      - name: Deploy Jacoco report
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/reports/jacoco/test/html
