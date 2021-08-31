@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BatchConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-batch-example</a> &gt; <a href="index.source.html" class="el_package">com.github.eduardozimelewicz.batchprocessing.config</a> &gt; <span class="el_source">BatchConfig.java</span></div><h1>BatchConfig.java</h1><pre class="source lang-java linenums">package com.github.eduardozimelewicz.batchprocessing.config;
+
+import com.github.eduardozimelewicz.batchprocessing.entity.Person;
+import com.github.eduardozimelewicz.batchprocessing.processor.PersonItemProcessor;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.io.ClassPathResource;
+
+import javax.sql.DataSource;
+
+@Configuration
+@EnableBatchProcessing
+<span class="fc" id="L29">public class BatchConfig {</span>
+  @Autowired
+  public JobBuilderFactory jobBuilderFactory;
+
+  @Autowired
+  public StepBuilderFactory stepBuilderFactory;
+
+  @Value(&quot;${sample.data}&quot;)
+  public String sampleDataPath;
+
+  @Bean
+  public FlatFileItemReader&lt;Person&gt; reader() {
+<span class="fc" id="L41">    return new FlatFileItemReaderBuilder&lt;Person&gt;()</span>
+<span class="fc" id="L42">            .name(&quot;personItemReader&quot;)</span>
+<span class="fc" id="L43">            .resource(new ClassPathResource(sampleDataPath))</span>
+<span class="fc" id="L44">            .delimited()</span>
+<span class="fc" id="L45">            .names(new String[]{&quot;firstName&quot;, &quot;lastName&quot;})</span>
+<span class="fc" id="L46">            .fieldSetMapper(new BeanWrapperFieldSetMapper&lt;Person&gt;() {{</span>
+<span class="fc" id="L47">              setTargetType(Person.class);</span>
+<span class="fc" id="L48">            }})</span>
+<span class="fc" id="L49">            .build();</span>
+  }
+
+  @Bean
+  public PersonItemProcessor processor() {
+<span class="fc" id="L54">    return new PersonItemProcessor();</span>
+  }
+
+  @Bean
+  public JdbcBatchItemWriter&lt;Person&gt; writer(DataSource dataSource) {
+<span class="fc" id="L59">    return new JdbcBatchItemWriterBuilder&lt;Person&gt;()</span>
+<span class="fc" id="L60">            .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider&lt;&gt;())</span>
+<span class="fc" id="L61">            .sql(&quot;INSERT INTO people (first_name, last_name) VALUES (:firstName, :lastName)&quot;)</span>
+<span class="fc" id="L62">            .dataSource(dataSource)</span>
+<span class="fc" id="L63">            .build();</span>
+  }
+
+  @Bean
+  public Job importUserJob(JobCompletionNotificationListener listener, Step step1) {
+<span class="fc" id="L68">    return jobBuilderFactory.get(&quot;importUserJob&quot;)</span>
+<span class="fc" id="L69">            .incrementer(new RunIdIncrementer())</span>
+<span class="fc" id="L70">            .listener(listener)</span>
+<span class="fc" id="L71">            .flow(step1)</span>
+<span class="fc" id="L72">            .end()</span>
+<span class="fc" id="L73">            .build();</span>
+  }
+
+  @Bean
+  public Step step1(JdbcBatchItemWriter&lt;Person&gt; writer) {
+<span class="fc" id="L78">    return stepBuilderFactory.get(&quot;step1&quot;)</span>
+<span class="fc" id="L79">            .&lt;Person, Person&gt; chunk(10)</span>
+<span class="fc" id="L80">            .reader(reader())</span>
+<span class="fc" id="L81">            .processor(processor())</span>
+<span class="fc" id="L82">            .writer(writer)</span>
+<span class="fc" id="L83">            .build();</span>
+  }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
