@@ -20,7 +20,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
+
 import javax.sql.DataSource;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Configuration
 @EnableBatchProcessing
@@ -35,7 +38,7 @@ public class BatchConfig {
   public DataSource dataSource;
 
   @Bean
-  public JdbcPagingItemReader reader(PagingQueryProvider pagingQueryProvider) {
+  public JdbcPagingItemReader<Person> reader(PagingQueryProvider pagingQueryProvider) {
     return new JdbcPagingItemReaderBuilder<Person>()
             .name("personJdbcReader")
             .dataSource(dataSource)
@@ -66,7 +69,8 @@ public class BatchConfig {
   public JsonFileItemWriter<Person> jsonFileItemWriter() {
     return new JsonFileItemWriterBuilder<Person>()
             .jsonObjectMarshaller(new JacksonJsonObjectMarshaller<>())
-            .resource(new FileSystemResource("out/people.json"))
+            .resource(new FileSystemResource("/tmp/batch/job-" + LocalDateTime.now().format(
+                    DateTimeFormatter.ofPattern("yyyy.MM.dd.HH.mm.ss")) + ".json"))
             .name("peopleJsonFileWriter")
             .build();
   }

@@ -6,5 +6,19 @@ spring:
     password:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
-sample:
-  data: "sample-data.csv"
+  batch:
+    job:
+      enabled: false
+
+server:
+  servlet:
+    context-path: "/job"
+
+feign:
+  client:
+    url: http://localhost:5000
+    config:
+      default:
+        connectTimeout: 1000
+        readTimeout: 1000
+        loggerLevel: basic

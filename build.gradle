@@ -13,10 +13,15 @@ repositories {
 	mavenCentral()
 }
 
+ext {
+	set('springCloudVersion', '2020.0.3')
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 	compileOnly 'org.projectlombok:lombok:1.18.8'
 	annotationProcessor 'org.projectlombok:lombok:1.18.8'
 	runtimeOnly 'org.hsqldb:hsqldb'
@@ -25,6 +30,13 @@ dependencies {
 	testImplementation 'org.springframework.batch:spring-batch-test'
 	testImplementation 'junit:junit:4.13'
 	testImplementation 'org.assertj:assertj-core:3.11.1'
+	testCompile "com.github.tomakehurst:wiremock-jre8:2.24.1"
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
 }
 
 test {
