@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.github.eduardozimelewicz.batchprocessing.config.BatchConfig;
 import com.github.eduardozimelewicz.batchprocessing.config.JobCompletionNotificationListener;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.batch.core.ExitStatus;
@@ -32,7 +33,6 @@ import java.util.Collection;
 @TestExecutionListeners({ DependencyInjectionTestExecutionListener.class,
 				DirtiesContextTestExecutionListener.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@TestPropertySource(properties = "sample.data=sample-data.csv")
 class BatchProcessingApplicationTests {
 
 	@Autowired

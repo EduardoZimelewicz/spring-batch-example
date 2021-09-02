@@ -17,7 +17,6 @@ import org.springframework.batch.item.json.JacksonJsonObjectMarshaller;
 import org.springframework.batch.item.json.JsonFileItemWriter;
 import org.springframework.batch.item.json.builder.JsonFileItemWriterBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
@@ -32,24 +31,8 @@ public class BatchConfig {
   @Autowired
   public StepBuilderFactory stepBuilderFactory;
 
-  //@Value("${sample.data}")
-  //public String sampleDataPath;
-
   @Autowired
   public DataSource dataSource;
-
-  //@Bean
-  //public FlatFileItemReader<Person> reader() {
-  //  return new FlatFileItemReaderBuilder<Person>()
-  //          .name("personItemReader")
-  //          .resource(new ClassPathResource(sampleDataPath))
-  //          .delimited()
-  //          .names(new String[]{"firstName", "lastName"})
-  //          .fieldSetMapper(new BeanWrapperFieldSetMapper<Person>() {{
-  //            setTargetType(Person.class);
-  //          }})
-  //          .build();
-  //}
 
   @Bean
   public JdbcPagingItemReader reader(PagingQueryProvider pagingQueryProvider) {
@@ -79,17 +62,8 @@ public class BatchConfig {
     return new PersonItemProcessor();
   }
 
-  //@Bean
-  //public JdbcBatchItemWriter<Person> writer(DataSource dataSource) {
-  //  return new JdbcBatchItemWriterBuilder<Person>()
-  //          .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-  //          .sql("INSERT INTO people (first_name, last_name) VALUES (:firstName, :lastName)")
-  //          .dataSource(dataSource)
-  //          .build();
-  //}
-
   @Bean
-  public JsonFileItemWriter<Person> jsonFileItemWriter() throws Exception {
+  public JsonFileItemWriter<Person> jsonFileItemWriter() {
     return new JsonFileItemWriterBuilder<Person>()
             .jsonObjectMarshaller(new JacksonJsonObjectMarshaller<>())
             .resource(new FileSystemResource("out/people.json"))
@@ -107,22 +81,11 @@ public class BatchConfig {
             .build();
   }
 
-  //@Bean
-  //public Step step1(JdbcBatchItemWriter<Person> writer) {
-  //  return stepBuilderFactory.get("step1")
-  //          .<Person, Person> chunk(10)
-  //          .reader(reader())
-  //          .processor(processor())
-  //          .writer(writer)
-  //          .build();
-  //}
-
   @Bean
   public Step step1(JsonFileItemWriter<Person> writer, PersonItemProcessor processor) throws Exception {
     return stepBuilderFactory.get("step1")
             .<Person, Person> chunk(10)
             .reader(reader(queryProviderFactoryBean().getObject()))
-            //.reader(reader())
             .processor(processor)
             .writer(jsonFileItemWriter())
             .build();

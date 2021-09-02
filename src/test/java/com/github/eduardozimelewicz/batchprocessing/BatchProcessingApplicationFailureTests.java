@@ -3,6 +3,8 @@ package com.github.eduardozimelewicz.batchprocessing;
 import com.github.eduardozimelewicz.batchprocessing.config.BatchConfig;
 import com.github.eduardozimelewicz.batchprocessing.config.JobCompletionNotificationListener;
 import org.junit.After;
+import org.junit.Ignore;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.batch.core.ExitStatus;
@@ -16,7 +18,6 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
 import org.springframework.test.context.support.DirtiesContextTestExecutionListener;
@@ -30,7 +31,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestExecutionListeners({ DependencyInjectionTestExecutionListener.class,
         DirtiesContextTestExecutionListener.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@TestPropertySource(properties = "sample.data=sample-data-wrong.csv")
 public class BatchProcessingApplicationFailureTests {
 
   @Autowired
@@ -44,6 +44,7 @@ public class BatchProcessingApplicationFailureTests {
     jobRepositoryTestUtils.removeJobExecutions();
   }
 
+  @Disabled("Not ready yet")
   @Test
   public void batchExecutionFailedTest() throws Exception {
     JobExecution jobExecution = jobLauncherTestUtils.launchJob();
