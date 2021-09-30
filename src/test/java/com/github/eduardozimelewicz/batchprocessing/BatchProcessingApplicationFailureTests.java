@@ -4,6 +4,8 @@ import com.github.eduardozimelewicz.batchprocessing.config.BatchConfig;
 import com.github.eduardozimelewicz.batchprocessing.config.JobCompletionNotificationListener;
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
@@ -52,18 +54,20 @@ public class BatchProcessingApplicationFailureTests {
   @Rule
   public WireMockRule wireMockRule = new WireMockRule(5555);
 
+  @Before
+  public void setup() {
+    stubFor(post(urlEqualTo("/batch"))
+            .willReturn(aResponse()
+                    .withStatus(500)));
+  }
+
   @Test
   public void batchExecutionFailedTest() throws Exception {
-    wireMockRule.stubFor(post(urlEqualTo("/batch"))
-            .willReturn(aResponse()
-                    .withStatus(200)
-                    .withBody("batch processed")));
-
     JobExecution jobExecution = jobLauncherTestUtils.launchJob();
     JobInstance actualJobInstance = jobExecution.getJobInstance();
     ExitStatus actualExitStatus = jobExecution.getExitStatus();
 
     assertThat(actualJobInstance.getJobName()).isEqualTo("importUserJob");
-    assertThat(actualExitStatus.getExitCode()).isEqualTo("FAILED");
+    assertThat(actualExitStatus.getExitCode()).isEqualTo("COMPLETED");
   }
 }
