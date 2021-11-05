@@ -13,24 +13,29 @@ import org.springframework.batch.test.JobRepositoryTestUtils;
 import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestExecutionListeners;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
 import org.springframework.test.context.support.DirtiesContextTestExecutionListener;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(SpringRunner.class)
+@SpringBootTest(properties = {"feign.client.url=http://localhost:5555", "spring.datasource.data:classpath:wrong.sql"})
 @SpringBatchTest
 @EnableAutoConfiguration
+@EnableFeignClients
 @ContextConfiguration(classes = {BatchConfig.class, JobCompletionNotificationListener.class})
 @TestExecutionListeners({ DependencyInjectionTestExecutionListener.class,
         DirtiesContextTestExecutionListener.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@TestPropertySource(properties = "sample.data=sample-data-wrong.csv")
+@AutoConfigureWireMock(port = 5555)
 public class BatchProcessingApplicationFailureTests {
 
   @Autowired
@@ -46,6 +51,9 @@ public class BatchProcessingApplicationFailureTests {
 
   @Test
   public void batchExecutionFailedTest() throws Exception {
+    stubFor(post(urlEqualTo("/batch"))
+        .willReturn(aResponse()
+            .withStatus(500)));
     JobExecution jobExecution = jobLauncherTestUtils.launchJob();
     JobInstance actualJobInstance = jobExecution.getJobInstance();
     ExitStatus actualExitStatus = jobExecution.getExitStatus();

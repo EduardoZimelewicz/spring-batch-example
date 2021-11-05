@@ -1,6 +1,7 @@
 package com.github.eduardozimelewicz.batchprocessing.config;
 
 import com.github.eduardozimelewicz.batchprocessing.entity.Person;
+import com.github.eduardozimelewicz.batchprocessing.mapper.PersonMapper;
 import com.github.eduardozimelewicz.batchprocessing.processor.PersonItemProcessor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -8,21 +9,21 @@ import org.springframework.batch.core.configuration.annotation.EnableBatchProces
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.batch.item.file.FlatFileItemReader;
-import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
-import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.batch.item.database.JdbcPagingItemReader;
+import org.springframework.batch.item.database.PagingQueryProvider;
+import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder;
+import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
+import org.springframework.batch.item.json.JacksonJsonObjectMarshaller;
+import org.springframework.batch.item.json.JsonFileItemWriter;
+import org.springframework.batch.item.json.builder.JsonFileItemWriterBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 
 import javax.sql.DataSource;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Configuration
 @EnableBatchProcessing
@@ -33,20 +34,30 @@ public class BatchConfig {
   @Autowired
   public StepBuilderFactory stepBuilderFactory;
 
-  @Value("${sample.data}")
-  public String sampleDataPath;
+  @Autowired
+  public DataSource dataSource;
 
   @Bean
-  public FlatFileItemReader<Person> reader() {
-    return new FlatFileItemReaderBuilder<Person>()
-            .name("personItemReader")
-            .resource(new ClassPathResource(sampleDataPath))
-            .delimited()
-            .names(new String[]{"firstName", "lastName"})
-            .fieldSetMapper(new BeanWrapperFieldSetMapper<Person>() {{
-              setTargetType(Person.class);
-            }})
+  public JdbcPagingItemReader<Person> reader(PagingQueryProvider pagingQueryProvider) {
+    return new JdbcPagingItemReaderBuilder<Person>()
+            .name("personJdbcReader")
+            .dataSource(dataSource)
+            .queryProvider(pagingQueryProvider)
+            .rowMapper(new PersonMapper())
+            .pageSize(10)
             .build();
+  }
+
+  @Bean
+  public SqlPagingQueryProviderFactoryBean queryProviderFactoryBean() {
+    SqlPagingQueryProviderFactoryBean providerFactoryBean = new SqlPagingQueryProviderFactoryBean();
+
+    providerFactoryBean.setDataSource(dataSource);
+    providerFactoryBean.setSelectClause("select person_id, first_name, last_name");
+    providerFactoryBean.setFromClause("from people");
+    providerFactoryBean.setSortKey("person_id");
+
+    return providerFactoryBean;
   }
 
   @Bean
@@ -55,11 +66,12 @@ public class BatchConfig {
   }
 
   @Bean
-  public JdbcBatchItemWriter<Person> writer(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<Person>()
-            .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-            .sql("INSERT INTO people (first_name, last_name) VALUES (:firstName, :lastName)")
-            .dataSource(dataSource)
+  public JsonFileItemWriter<Person> jsonFileItemWriter() {
+    return new JsonFileItemWriterBuilder<Person>()
+            .jsonObjectMarshaller(new JacksonJsonObjectMarshaller<>())
+            .resource(new FileSystemResource("/tmp/batch/job-" + LocalDateTime.now().format(
+                    DateTimeFormatter.ofPattern("yyyy.MM.dd.HH.mm.ss")) + ".json"))
+            .name("peopleJsonFileWriter")
             .build();
   }
 
@@ -74,12 +86,12 @@ public class BatchConfig {
   }
 
   @Bean
-  public Step step1(JdbcBatchItemWriter<Person> writer) {
+  public Step step1(JsonFileItemWriter<Person> writer, PersonItemProcessor processor) throws Exception {
     return stepBuilderFactory.get("step1")
             .<Person, Person> chunk(10)
-            .reader(reader())
-            .processor(processor())
-            .writer(writer)
+            .reader(reader(queryProviderFactoryBean().getObject()))
+            .processor(processor)
+            .writer(jsonFileItemWriter())
             .build();
   }
 }

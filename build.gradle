@@ -13,15 +13,32 @@ repositories {
 	mavenCentral()
 }
 
+ext {
+	set('springCloudVersion', '2020.0.3')
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-batch'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+	implementation 'org.springframework.cloud:spring-cloud-starter-contract-stub-runner'
 	compileOnly 'org.projectlombok:lombok:1.18.8'
 	annotationProcessor 'org.projectlombok:lombok:1.18.8'
 	runtimeOnly 'org.hsqldb:hsqldb'
+	runtimeOnly 'com.h2database:h2:1.3.148'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.batch:spring-batch-test'
-	testImplementation 'junit:junit:4.13'
+	testImplementation 'junit:junit:4.10'
 	testImplementation 'org.assertj:assertj-core:3.11.1'
+	testImplementation 'com.github.tomakehurst:wiremock:2.27.2'
+	testImplementation 'commons-io:commons-io:2.6'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
 }
 
 test {
@@ -39,7 +56,8 @@ jacocoTestReport {
 	afterEvaluate {
 		classDirectories.setFrom(files(classDirectories.files.collect {
 			fileTree(dir: it, exclude: [
-			        "com/github/**/*Application.class"
+			        "com/github/**/*Application.class",
+					"com/github/**/JobController.class"
 			])
 		}))
 	}
