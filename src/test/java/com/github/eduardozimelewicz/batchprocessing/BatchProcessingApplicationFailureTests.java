@@ -2,11 +2,7 @@ package com.github.eduardozimelewicz.batchprocessing;
 
 import com.github.eduardozimelewicz.batchprocessing.config.BatchConfig;
 import com.github.eduardozimelewicz.batchprocessing.config.JobCompletionNotificationListener;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.springframework.batch.core.ExitStatus;
@@ -18,6 +14,7 @@ import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
@@ -30,7 +27,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(properties = {"feign.client.url=http://localhost:5555"})
+@SpringBootTest(properties = {"feign.client.url=http://localhost:5555", "spring.datasource.data:classpath:wrong.sql"})
 @SpringBatchTest
 @EnableAutoConfiguration
 @EnableFeignClients
@@ -38,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestExecutionListeners({ DependencyInjectionTestExecutionListener.class,
         DirtiesContextTestExecutionListener.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@AutoConfigureWireMock(port = 5555)
 public class BatchProcessingApplicationFailureTests {
 
   @Autowired
@@ -51,23 +49,16 @@ public class BatchProcessingApplicationFailureTests {
     jobRepositoryTestUtils.removeJobExecutions();
   }
 
-  @Rule
-  public WireMockRule wireMockRule = new WireMockRule(5555);
-
-  @Before
-  public void setup() {
-    stubFor(post(urlEqualTo("/batch"))
-            .willReturn(aResponse()
-                    .withStatus(500)));
-  }
-
   @Test
   public void batchExecutionFailedTest() throws Exception {
+    stubFor(post(urlEqualTo("/batch"))
+        .willReturn(aResponse()
+            .withStatus(500)));
     JobExecution jobExecution = jobLauncherTestUtils.launchJob();
     JobInstance actualJobInstance = jobExecution.getJobInstance();
     ExitStatus actualExitStatus = jobExecution.getExitStatus();
 
     assertThat(actualJobInstance.getJobName()).isEqualTo("importUserJob");
-    assertThat(actualExitStatus.getExitCode()).isEqualTo("COMPLETED");
+    assertThat(actualExitStatus.getExitCode()).isEqualTo("FAILED");
   }
 }

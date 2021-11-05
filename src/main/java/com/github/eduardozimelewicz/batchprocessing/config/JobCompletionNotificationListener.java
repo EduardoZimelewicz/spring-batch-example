@@ -36,7 +36,7 @@ public class JobCompletionNotificationListener extends JobExecutionListenerSuppo
         log.info("job_id: " + jobExecution.getId() + ", status: " + response.status());
       } catch (IOException e){
         e.printStackTrace();
-        log.error("Job execution " + jobExecution.getId() + " failed");
+        log.error("Json file read from Job: " + jobExecution.getId() + " failed");
       }
     } else {
       log.error("Job execution " + jobExecution.getId() + " failed");

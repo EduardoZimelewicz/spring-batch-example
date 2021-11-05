@@ -2,12 +2,11 @@ package com.github.eduardozimelewicz.batchprocessing;
 
 import com.github.eduardozimelewicz.batchprocessing.config.BatchConfig;
 import com.github.eduardozimelewicz.batchprocessing.config.JobCompletionNotificationListener;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
@@ -18,6 +17,7 @@ import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
@@ -26,13 +26,18 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
 import org.springframework.test.context.support.DirtiesContextTestExecutionListener;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Collection;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(properties = {"feign.client.url=http://127.0.0.1:5555"})
+@SpringBootTest(properties = {"feign.client.url=http://localhost:5555"})
 @SpringBatchTest
 @EnableAutoConfiguration
 @EnableFeignClients
@@ -40,7 +45,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestExecutionListeners({ DependencyInjectionTestExecutionListener.class,
 				DirtiesContextTestExecutionListener.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@AutoConfigureWireMock(port = 5555)
 class BatchProcessingApplicationTests {
+
+	private static final Logger log = LoggerFactory.getLogger(BatchProcessingApplicationTests.class);
 
 	@Autowired
 	private JobLauncherTestUtils jobLauncherTestUtils;
@@ -48,16 +56,10 @@ class BatchProcessingApplicationTests {
 	@Autowired
 	private JobRepositoryTestUtils jobRepositoryTestUtils;
 
-	@Rule
-	public WireMockRule wireMockRule = new WireMockRule(5555);
-
-	@Before
-	public void setup() {
-		stubFor(post(urlEqualTo("/batch"))
-						.willReturn(aResponse()
-										.withStatus(200)
-										.withBody("batch processed")));
-	}
+  private static final HttpClient httpClient = HttpClient.newBuilder()
+					.version(HttpClient.Version.HTTP_1_1)
+					.connectTimeout(Duration.ofSeconds(10))
+					.build();
 
 	@After
 	public void cleanUp() {
@@ -65,7 +67,28 @@ class BatchProcessingApplicationTests {
 	}
 
 	@Test
+	public void testHttpConnection() throws Exception{
+		stubFor(get(urlEqualTo("/ok"))
+				.willReturn(ok()));
+		HttpRequest request = HttpRequest.newBuilder()
+						.GET()
+						.uri(URI.create("http://localhost:5555/ok"))
+						.setHeader("User-Agent", "Java 11 HttpClient Bot") // add request header
+						.build();
+		HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+		log.info(response.body());
+
+		verify(getRequestedFor(urlEqualTo("/ok")).withHeader("User-Agent",
+				equalTo("Java 11 HttpClient Bot")));
+	}
+
+	@Test
 	public void batchExecutionCompletenessTest() throws Exception{
+		stubFor(post(urlEqualTo("/batch"))
+				.willReturn(aResponse()
+						.withStatus(200)
+						.withBody("batch processed")));
 		JobExecution jobExecution = jobLauncherTestUtils.launchJob();
 		JobInstance actualJobInstance = jobExecution.getJobInstance();
 		ExitStatus actualJobExitStatus = jobExecution.getExitStatus();
@@ -76,6 +99,10 @@ class BatchProcessingApplicationTests {
 
 	@Test
 	public void batchExecutionStepCompletenessTest() throws Exception{
+		stubFor(post(urlEqualTo("/batch"))
+				.willReturn(aResponse()
+						.withStatus(200)
+						.withBody("batch processed")));
 		JobExecution jobExecution = jobLauncherTestUtils.launchJob();
 		Collection<StepExecution> actualStepExecutions = jobExecution.getStepExecutions();
 		ExitStatus actualExitStatus = jobExecution.getExitStatus();
