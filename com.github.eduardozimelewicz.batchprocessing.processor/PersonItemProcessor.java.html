@@ -10,15 +10,16 @@ import org.springframework.batch.item.ItemProcessor;
 <span class="fc" id="L10">  private final Logger log = LoggerFactory.getLogger(PersonItemProcessor.class);</span>
 
   @Override
-  public Person process(final Person person) throws Exception {
+  public Person process(final Person person) {
 <span class="fc" id="L14">    final String firstName = person.getFirstName().toUpperCase();</span>
 <span class="fc" id="L15">    final String lastName = person.getLastName().toUpperCase();</span>
+<span class="fc" id="L16">    final Integer personId = person.getPersonId();</span>
 
-<span class="fc" id="L17">    final Person transformedPerson = new Person(firstName, lastName);</span>
+<span class="fc" id="L18">    final Person transformedPerson = new Person(personId, firstName, lastName);</span>
 
-<span class="fc" id="L19">    log.info(&quot;Converting (&quot; + person + &quot;) into (&quot; + transformedPerson + &quot;)&quot;);</span>
+<span class="fc" id="L20">    log.info(&quot;Converting (&quot; + person + &quot;) into (&quot; + transformedPerson + &quot;)&quot;);</span>
 
-<span class="fc" id="L21">    return transformedPerson;</span>
+<span class="fc" id="L22">    return transformedPerson;</span>
   }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>

@@ -1,40 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JobCompletionNotificationListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">spring-batch-example</a> &gt; <a href="index.source.html" class="el_package">com.github.eduardozimelewicz.batchprocessing.config</a> &gt; <span class="el_source">JobCompletionNotificationListener.java</span></div><h1>JobCompletionNotificationListener.java</h1><pre class="source lang-java linenums">package com.github.eduardozimelewicz.batchprocessing.config;
 
-import com.github.eduardozimelewicz.batchprocessing.entity.Person;
+import com.github.eduardozimelewicz.batchprocessing.client.PostApiFeignClient;
+import feign.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.listener.JobExecutionListenerSupport;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Optional;
+
 @Component
-public class JobCompletionNotificationListener extends JobExecutionListenerSupport {
+<span class="fc" id="L21">public class JobCompletionNotificationListener extends JobExecutionListenerSupport {</span>
 
-<span class="fc" id="L16">  private static final Logger log = LoggerFactory.getLogger(JobCompletionNotificationListener.class);</span>
-
-  private final JdbcTemplate jdbcTemplate;
+<span class="fc" id="L23">  private static final Logger log = LoggerFactory.getLogger(JobCompletionNotificationListener.class);</span>
 
   @Autowired
-<span class="fc" id="L21">  public JobCompletionNotificationListener(JdbcTemplate jdbcTemplate) {</span>
-<span class="fc" id="L22">    this.jdbcTemplate = jdbcTemplate;</span>
-<span class="fc" id="L23">  }</span>
+  private PostApiFeignClient postApiFeignClient;
 
   @Override
   public void afterJob(JobExecution jobExecution) {
-<span class="fc bfc" id="L27" title="All 2 branches covered.">    if(jobExecution.getStatus() == BatchStatus.COMPLETED) {</span>
-<span class="fc" id="L28">      log.info(&quot;!!! JOB FINISHED! Time to verify the results&quot;);</span>
-
-<span class="fc" id="L30">      jdbcTemplate.query(&quot;SELECT first_name, last_name FROM people&quot;,</span>
-<span class="fc" id="L31">              (rs, row) -&gt; new Person(</span>
-<span class="fc" id="L32">                      rs.getString(1),</span>
-<span class="fc" id="L33">                      rs.getString(2))</span>
-<span class="fc" id="L34">      ).forEach(person -&gt; log.info(&quot;Found &lt;&quot; + person + &quot;&gt; in the database.&quot;));</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">    if(jobExecution.getStatus() == BatchStatus.COMPLETED) {</span>
+<span class="fc" id="L31">      log.info(&quot;!!! JOB FINISHED !!! Sending data to API&quot;);</span>
+      try {
+<span class="fc" id="L33">        File batchJsonResultFile = findLatestGeneratedBatchFile();</span>
+<span class="fc" id="L34">        String json = readFileAsString(batchJsonResultFile);</span>
+<span class="fc" id="L35">        Response response = postApiFeignClient.sendBatchJobResults(json);</span>
+<span class="fc" id="L36">        log.info(&quot;job_id: &quot; + jobExecution.getId() + &quot;, status: &quot; + response.status());</span>
+<span class="nc" id="L37">      } catch (IOException e){</span>
+<span class="nc" id="L38">        e.printStackTrace();</span>
+<span class="nc" id="L39">        log.error(&quot;Json file read from Job: &quot; + jobExecution.getId() + &quot; failed&quot;);</span>
+<span class="pc" id="L40">      }</span>
     } else {
-<span class="fc" id="L36">      log.error(&quot;Job execution &quot; + jobExecution.getId() + &quot; failed&quot;);</span>
+<span class="fc" id="L42">      log.error(&quot;Job execution &quot; + jobExecution.getId() + &quot; failed&quot;);</span>
     }
-<span class="fc" id="L38">  }</span>
+<span class="fc" id="L44">  }</span>
+
+  public static File findLatestGeneratedBatchFile() {
+<span class="fc" id="L47">    File batchDir = new File(&quot;/tmp/batch&quot;);</span>
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">      if(batchDir.isDirectory()) {</span>
+<span class="fc" id="L49">        Optional&lt;File&gt; opFile = Arrays.stream(batchDir.listFiles(File::isFile)).max(</span>
+<span class="fc" id="L50">                (f1,f2) -&gt; Long.compare(f1.lastModified(), f2.lastModified()));</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        if(opFile.isPresent()){</span>
+<span class="fc" id="L52">          return opFile.get();</span>
+        }
+      }
+<span class="nc" id="L55">      return null;</span>
+  }
+
+  public static String readFileAsString(File file) throws IOException {
+<span class="fc" id="L59">    return new String(Files.readAllBytes(Paths.get(file.getPath())));</span>
+  }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
